@@ -1,7 +1,6 @@
 #ifndef __COMMS_AK_SERIES
 #define __COMMS_AK_SERIES
 #pragma once
-
 #ifdef __cplusplus
 extern "C" {
 #include <linux/can.h>
@@ -25,6 +24,7 @@ extern "C" {
 #endif
 
 #include "Errors.hpp"
+#include <Logging.hpp>
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -51,7 +51,7 @@ class CanInterface {
   uint32_t pollTime{10};
 
 public:
-  CanInterface(const char *);
+  CanInterface(const char *, Logger const *log = nullptr);
   [[nodiscard]] static Expected<int, CanIOError> initCan(const char *);
   CanInterface() = delete;
   /*

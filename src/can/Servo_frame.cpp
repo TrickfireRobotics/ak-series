@@ -1,4 +1,5 @@
 #include "can/Servo_frame.hpp"
+#include "Logging.hpp"
 #include <charconv>
 #include <cstdio>
 #include <limits>
@@ -32,10 +33,10 @@ constexpr float fAccelMax = static_cast<float>(kAccelMax) * 10.0f;
 bool checkIs0x29(uint32_t frameHeader) { return static_cast<uint8_t>(frameHeader >> 8) == 0x29; }
 
 void warnRounding(const char *val, float min, float max, float n) {
-  std::fprintf(stderr,
-               "Warning: the value you passed for %s is in between invalid bounds, the bounds were "
-               "%f -> %f, you passed %f rounding\n",
-               val, min, max, n);
+  Logger::log(LoggingLevel::Warning,
+              "Warning: the value you passed for %s is in between invalid bounds, the bounds were "
+              "%f -> %f, you passed %f rounding\n",
+              val, min, max, n);
 }
 
 } // namespace

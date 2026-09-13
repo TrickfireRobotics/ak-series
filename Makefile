@@ -18,6 +18,7 @@ test:
 	./scripts/vm_test.sh
 clean:
 	rm -rf ./build
+#Specificaly for building required files for LSP and testing
 container-build:
 	devcontainer exec --workspace-folder . -- cmake -S . -B build -DSETUP_TEST_IFNAME=ON -DBUILD_TESTING=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 

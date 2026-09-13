@@ -4,6 +4,7 @@
 
 #include "Errors.hpp"
 #include "frame.hpp"
+#include <Logging.hpp>
 #include <stdexcept>
 #include <stdint.h>
 
@@ -30,6 +31,7 @@ enum class ServoFrameID : uint8_t {
   ServoModeFeedback = 0x29
 };
 
+void initLogging(Logger *);
 class ServoSendFrame : public Frame {
 private:
   ServoFrameID mServoID;
