@@ -1,3 +1,5 @@
+name: ak-series
+
 # --------------------------------------------------------------------------------------------
 # ak-series container services
 #
@@ -32,26 +34,6 @@ services:
     container_name: ak-series
     stdin_open: true
     tty: true
-
-  test:
-    <<: *ak-base
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: test
-    image: ak-series:test
-    container_name: ak-series-test
-    command:
-      - bash
-      - -lc
-      - |
-        set -e
-        sudo modprobe vcan
-        cmake -S . -B build -G Ninja \
-          -DBUILD_TESTING=ON \
-          -DSETUP_TEST_IFNAME=ON
-        cmake --build build
-        ctest --test-dir build --output-on-failure
 
   dev:
     <<: *ak-base

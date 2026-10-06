@@ -50,6 +50,8 @@ else()
                                                  "LOGGING_LEVEL=0")
 endif()
 
+message(STATUS "Logging verbosity ${LOGGING_VERBOSITY}.")
+
 target_sources(
   ak_series_lib PRIVATE src/can/MIT_frame.cpp src/can/Servo_frame.cpp
                         src/can/comms.cpp src/AKSeries.cpp)
@@ -71,6 +73,7 @@ install(
 if(BUILD_TESTING)
   enable_testing()
   find_package(GTest REQUIRED)
+  find_package(pybind11 QUIET)
   include(GoogleTest)
   add_executable(
     run_tests
@@ -98,6 +101,7 @@ if(BUILD_TESTING)
 endif()
 
 if(PYTHON_BINDINGS)
+  find_package(pybind11 QUIET)
   set_target_properties(ak_series_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
   include("${CMAKE_SOURCE_DIR}/python/litgen_cmake.cmake")
