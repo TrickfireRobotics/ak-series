@@ -59,6 +59,7 @@ public:
   void sendPosition(float pos);
   void sendOrigin(uint8_t origin_mode);
   void sendPositionAndVelo(float position, float speed, float accel);
+
   ServoModeMotor() = delete;
 };
 
