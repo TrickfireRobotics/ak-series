@@ -7,3 +7,6 @@ dist/
 tests/Testing/
 .clangd
 **/node_modules/
+**pycache**
+install/
+log/

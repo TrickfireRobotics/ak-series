@@ -5,25 +5,19 @@ description: Clone the AK Series driver repository and build the library.
 
 Clone the repository, set up your build environment, then build the library with CMake.
 
-## Clone the repository
+## Build the code
 
 ```bash title="Terminal"
 git clone https://github.com/TrickfireRobotics/ak-series.git
 cd ak-series
+sudo make #If you want to only build the C++ repository
+sudo make python #If you want to make the python bindings (ensure pybind11 is installed)
 ```
 
 <Callout type="warning" title="Caution">
-    The build will fail if you are not on a Linux system or inside the dev container, since it depends on Linux SocketCAN.
+  The build will fail if you are not on a Linux system or inside the dev
+  container, since it depends on Linux SocketCAN.
 </Callout>
-
-## Build the library
-
-```bash title="Terminal"
-mkdir build && cd build
-cmake -S .. -B . -DSETUP_TEST_IFNAME=ON -DBUILD_TESTING=ON \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-cmake --build .
-```
 
 | Option                          | Description                                 |
 | ------------------------------- | ------------------------------------------- |
@@ -38,3 +32,53 @@ cmake --build .
 - Explore the [code reference](../../reference/overview/) for a deep dive into the library.
 
 {/* TODO: expand prerequisites and CAN interface setup details */}
+
+## Basic usage guide
+
+```cpp
+#include <AKSeries/AKSeries.hpp>
+using namespace AKSeries;
+
+
+int main() {
+    //Write the canline we are running on
+    AKSeriesInterface interface{"can0"};
+    //Using predefined motor settings with a canid at the end
+    MitModeMotor m1 = interface.createMitMotor(AKSeriesMotor::AK10_9, 11);
+    //Define custom motor limits
+    MotorRunLimits lims = {.speed = 10.0f, .torque = 25.0f, .pos = 11.0f};
+    //Use those limits to create a motor with a canid
+    MitModeMotor m2 = interface.createMitMotor(lims, 12);
+    //Predefined servo mode motor
+    ServoModeMotor s1 = interface.createServoMotor(AKSeriesMotor::AK60_6, 13);
+    //using custom limits for servo mode motor
+    ServoModeMotor s2 = interface.createServoMotor(lims, 14);
+
+    MitRunSettings settings{.position = 11.0f, .speed = 2.5f, .current = 1.0f};
+    //Define run settings and send the values to the motors
+    m1.send(settings);
+    m2.send(settings);
+
+    //Run servo mode with parameters
+    s1.sendDutyCycle(11.0f);
+    s2.sendDutyCycle(1.0f);
+    s1.sendCurrentLoop(31.0f);
+    s2.sendCurrentLoop(21.0f);
+    s1.sendCurrentBrake(25.0f);
+    s2.sendCurrentBrake(32.0f);
+    s1.sendRPM(14.0f);
+    s2.sendRPM(13.0f);
+    s1.sendPosition(4.0f);
+    s2.sendPosition(5.0f);
+    s1.sendOrigin(1);
+    s2.sendOrigin(0);
+    s1.sendPositionAndVelo(11.0f, 11.0f, 11.0f);
+    s2.sendPositionAndVelo(11.0f, 11.0f, 11.0f);
+
+    //All motors are move only objects, copy is intentionally disabled
+    ServoMode s3 = std::move(s2);
+    ServoMode s4{std::move(s1)};
+
+    return 0;
+}
+```

@@ -54,7 +54,7 @@ multipass exec "$VM" -- mkdir -p socketcan-testing
 multipass transfer -r . "$VM:$REMOTE/"
 multipass exec "$VM" -d "$REMOTE" -- sudo rm -rf build
 
-multipass exec "$VM" -d "$REMOTE" -- cmake -S . -B build -DSETUP_TEST_IFNAME=ON -DBUILD_TESTING=ON
+multipass exec "$VM" -d "$REMOTE" -- cmake -S . -B build -DSETUP_TEST_IFNAME=ON -DBUILD_TESTING=ON -DLOGGING_VERBOSITY=vvv
 multipass exec "$VM" -d "$REMOTE/build" -- make
 
 if ! multipass exec "$VM" -d "$REMOTE/build" -- sudo ctest --output-on-failure; then

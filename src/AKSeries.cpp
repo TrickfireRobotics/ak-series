@@ -1,6 +1,7 @@
 #include "AKSeries.hpp"
 #include "can/MIT_frame.hpp"
 #include "motors/Motors.hpp"
+#include <Logging.hpp>
 #include <can/Servo_frame.hpp>
 #include <can/comms.hpp>
 #include <stdexcept>
@@ -60,7 +61,7 @@ std::optional<MitRecvFrame> MitModeMotor::sendAndRecieve(MitRunSettings &setting
   auto recv = this->mInterface->sendAndRead(sf);
 
   if (!recv.successful) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
     return std::nullopt;
   }
   return MitRecvFrame(recv.value, *this->mLims);
@@ -70,39 +71,40 @@ void MitModeMotor::send(MitRunSettings &settings) {
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 void ServoModeMotor::sendDutyCycle(float dutyCycle) {
   if (dutyCycle < -mLims->torque || dutyCycle > mLims->torque) {
-    std::fprintf(stderr, "Argument for PLACEHOLDER was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Warning, "Argument for duty cycle was invalid, rounding to limits");
     dutyCycle = mLims->torque < dutyCycle ? mLims->torque : -mLims->torque;
   }
   ServoSendFrame f = ServoSendFrame::setDutyCycle(mCanId, dutyCycle);
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 void ServoModeMotor::sendCurrentLoop(float currentLoop) {
   if (currentLoop < -mLims->torque || currentLoop > mLims->torque) {
-    std::fprintf(stderr, "Argument for current loop was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Warning, "Argument for current loop was invalid, rounding to limits");
     currentLoop = mLims->torque < currentLoop ? mLims->torque : -mLims->torque;
   }
   ServoSendFrame f = ServoSendFrame::setCurrentLoop(mCanId, currentLoop);
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 void ServoModeMotor::sendCurrentBrake(float currentBrake) {
   if (currentBrake < -mLims->torque || currentBrake > mLims->torque) {
-    std::fprintf(stderr, "Argument for current brake was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Warning,
+                "Argument for current brake was invalid, rounding to limits");
     currentBrake = mLims->torque < currentBrake ? mLims->torque : -mLims->torque;
   }
 
@@ -110,13 +112,13 @@ void ServoModeMotor::sendCurrentBrake(float currentBrake) {
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 void ServoModeMotor::sendRPM(float rpm) {
   if (rpm < -mLims->speed || rpm > mLims->speed) {
-    std::fprintf(stderr, "Argument for rpm was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Warning, "Argument for rpm was invalid, rounding to limits");
     rpm = mLims->speed < rpm ? mLims->speed : -mLims->speed;
   }
 
@@ -124,20 +126,20 @@ void ServoModeMotor::sendRPM(float rpm) {
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 void ServoModeMotor::sendPosition(float pos) {
   if (pos < -mLims->pos || pos > mLims->pos) {
-    std::fprintf(stderr, "Argument for pos was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Warning, "Argument for pos was invalid, rounding to limits");
     pos = mLims->pos < pos ? mLims->pos : -mLims->pos;
   }
   ServoSendFrame f = ServoSendFrame::setPosition(mCanId, pos);
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
@@ -146,17 +148,17 @@ void ServoModeMotor::sendOrigin(uint8_t originMode) {
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 void ServoModeMotor::sendPositionAndVelo(float pos, float speed, float accel) {
   if (pos < -mLims->pos || pos > mLims->pos) {
-    std::fprintf(stderr, "Argument for pos was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Warning, "Argument for pos was invalid, rounding to limits");
     pos = mLims->pos < pos ? mLims->pos : -mLims->pos;
   }
   if (speed < -mLims->speed || speed > mLims->speed) {
-    std::fprintf(stderr, "Argument for speed was invalid, rounding to limits");
+    Logger::log(LoggingLevel::Error, "Argument for speed was invalid, rounding to limits");
     speed = mLims->speed < speed ? mLims->speed : -mLims->speed;
   }
   // Accel check gets done in the constructor for the object, ignoring
@@ -164,14 +166,14 @@ void ServoModeMotor::sendPositionAndVelo(float pos, float speed, float accel) {
   can_frame sf = static_cast<can_frame>(f);
   CanIOError err = this->mInterface->send(sf);
   if (err != CanIOError::NONE) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
   }
 }
 
 std::optional<ServoRecvFrame> AKSeriesInterface::readServoFrame() {
   auto f = canInterface->read();
   if (!f.successful) {
-    std::fprintf(stderr, "IOError in the received can frame, logging");
+    Logger::log(LoggingLevel::Error, "IOError in the received can frame");
     return std::nullopt;
   }
   return ServoRecvFrame(f.value);

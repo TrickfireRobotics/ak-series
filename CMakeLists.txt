@@ -1,96 +1,142 @@
 cmake_minimum_required(VERSION 3.23)
 
-project(ak_series LANGUAGES CXX)
+project(
+  ak-series
+  LANGUAGES CXX
+  VERSION 0.0.1)
 
 option(SETUP_TEST_IFNAME "Set-up the test VCAN interface automatically" OFF)
 option(PYTHON_BINDINGS "Build python bindings" OFF)
 option(BUILD_TESTING "Builds test folder, only use for testing" OFF)
+option(
+  LOGGING_VERBOSITY
+  "Sets logging verbosity for internal motor library functions (q, v, vv, vvv)"
+  "q")
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(ament_cmake QUIET)
+if(ament_cmake_FOUND)
+  message(STATUS "Ament cmake detected.")
+endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  message(FATAL_ERROR "SocketCAN is Linux-only; this project cannot be built on ${CMAKE_SYSTEM_NAME}.")
+  message(
+    FATAL_ERROR
+      "SocketCAN is Linux-only; this project cannot be built on ${CMAKE_SYSTEM_NAME}."
+  )
 endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SocketCAN REQUIRED IMPORTED_TARGET libsocketcan)
 
 add_library(ak_series_lib STATIC)
-add_library(ak_series::ak_series_lib ALIAS ak_series_lib)
+add_library(ak-series::ak_series_lib ALIAS ak_series_lib)
+if(LOGGING_VERBOSITY EQUAL "q")
+  set_target_properties(ak_series_lib PROPERTIES COMPILE_DEFINITIONS
+                                                 "LOGGING_LEVEL=0")
+elseif(LOGGING_VERBOSITY EQUAL "v")
+  set_target_properties(ak_series_lib PROPERTIES COMPILE_DEFINITIONS
+                                                 "LOGGING_LEVEL=1")
+elseif(LOGGING_VERBOSITY EQUAL "vv")
+  set_target_properties(ak_series_lib PROPERTIES COMPILE_DEFINITIONS
+                                                 "LOGGING_LEVEL=2")
+elseif(LOGGING_VERBOSITY EQUAL "vvv")
+  set_target_properties(ak_series_lib PROPERTIES COMPILE_DEFINITIONS
+                                                 "LOGGING_LEVEL=3")
+else()
+  # Default to quiet
+  set_target_properties(ak_series_lib PROPERTIES COMPILE_DEFINITIONS
+                                                 "LOGGING_LEVEL=0")
+endif()
 
-target_sources(ak_series_lib
-  PRIVATE
-  src/can/MIT_frame.cpp
-  src/can/Servo_frame.cpp
-  src/can/comms.cpp
-  src/AKSeries.cpp
-)
+message(STATUS "Logging verbosity ${LOGGING_VERBOSITY}.")
+
+target_sources(
+  ak_series_lib PRIVATE src/can/MIT_frame.cpp src/can/Servo_frame.cpp
+                        src/can/comms.cpp src/AKSeries.cpp)
 
 target_compile_features(ak_series_lib PUBLIC cxx_std_17)
 
-target_include_directories(ak_series_lib
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
+target_include_directories(
+  ak_series_lib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                       $<INSTALL_INTERFACE:include>)
 
-install(DIRECTORY include/
-  DESTINATION include/
-)
-install(TARGETS ak_series_lib
+install(DIRECTORY include/ DESTINATION include/)
+install(
+  TARGETS ak_series_lib
   EXPORT ${PROJECT_NAME}Targets
   RUNTIME DESTINATION bin
   ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-)
+  LIBRARY DESTINATION lib)
 
-
-if (BUILD_TESTING)
-  #Lets us define what happens and how tests are run
+if(BUILD_TESTING)
   enable_testing()
-	find_package(GTest REQUIRED)
+  find_package(GTest REQUIRED)
+  find_package(pybind11 QUIET)
   include(GoogleTest)
-	add_executable(run_tests
-	  # Add testing files here once populated
-    tests/run_tests.cpp
-    tests/can/ServoFrameTests.cpp
-    tests/can/MitFrameTests.cpp
-    tests/can/CommsTest.cpp
-    tests/AKSeriesTests.cpp
-	)
-	set(AK_SERIES_TESTS ak_series_lib GTest::gtest_main)
-	target_link_libraries(run_tests PUBLIC ${AK_SERIES_TESTS})
+  add_executable(
+    run_tests
+    # Add testing files here once populated
+    tests/run_tests.cpp tests/can/ServoFrameTests.cpp
+    tests/can/MitFrameTests.cpp tests/can/CommsTest.cpp tests/AKSeriesTests.cpp)
+  set(AK_SERIES_TESTS ak_series_lib GTest::gtest_main)
+  target_link_libraries(run_tests PUBLIC ${AK_SERIES_TESTS})
 
-	if (SETUP_TEST_IFNAME)
-	  set(VCAN_IFNAME "vcan_test")
+  if(SETUP_TEST_IFNAME)
+    set(VCAN_IFNAME "vcan_test")
 
-	  # Generate CTestCustom.cmake at the top of the build tree so that
-	  # ctest actually picks up the CTEST_CUSTOM_PRE_TEST/POST_TEST commands
-	  # that bring the virtual CAN interface up/down around the test run.
-	  configure_file(
-	    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CTestCustom.cmake.in
-	    ${CMAKE_BINARY_DIR}/CTestCustom.cmake
-	    @ONLY
-	  )
-	endif()
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CTestCustom.cmake.in
+                   ${CMAKE_BINARY_DIR}/CTestCustom.cmake @ONLY)
+  endif()
 
-  # ENVIRONMENT is what actually reaches each test process; the pre-test
-  # shell's own exports do not, so the interface name is injected here.
-  gtest_discover_tests(run_tests
+  gtest_discover_tests(
+    run_tests
     TEST_SUFFIX .noargs
     TEST_LIST noArgsTests
     PROPERTIES
-      TIMEOUT 10
-      ENVIRONMENT "SETUP_TEST_IFNAME=${VCAN_IFNAME}"
-  )
+    TIMEOUT 10 ENVIRONMENT "SETUP_TEST_IFNAME=${VCAN_IFNAME}")
 
-  target_compile_features(run_tests PUBLIC
-    cxx_std_17
-  )
-
+  target_compile_features(run_tests PUBLIC cxx_std_17)
 endif()
 
+if(PYTHON_BINDINGS)
+  find_package(pybind11 QUIET)
+  set_target_properties(ak_series_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  include("${CMAKE_SOURCE_DIR}/python/litgen_cmake.cmake")
+  litgen_find_pybind11()
+  set(python_module_sources python/module.cpp python/AKSeriesOut.cpp)
+  pybind11_add_module(_ak_series ${python_module_sources})
+  litgen_setup_module(ak_series_lib _ak_series ak_series
+                      ${CMAKE_CURRENT_SOURCE_DIR}/_stubs)
+endif()
+
+if(ament_cmake_FOUND)
+  ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
+  ament_package()
+else()
+  include(GNUInstallDirs)
+  set(INSTALL_CMAKE_CONFIG_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+
+  install(
+    EXPORT ${PROJECT_NAME}Targets
+    NAMESPACE ${PROJECT_NAME}::
+    FILE ${PROJECT_NAME}Targets.cmake
+    DESTINATION ${INSTALL_CMAKE_CONFIG_DIR})
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    INSTALL_DESTINATION ${INSTALL_CMAKE_CONFIG_DIR}
+    NO_SET_AND_CHECK_MACRO NO_CHECK_REQUIRED_COMPONENTS_MACRO)
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+                ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+          DESTINATION ${INSTALL_CMAKE_CONFIG_DIR})
+endif()
 
 target_link_libraries(ak_series_lib PUBLIC PkgConfig::SocketCAN)
-
-

@@ -1,15 +1,15 @@
 #include "can/comms.hpp"
 #include "Errors.hpp"
+#include "Logging.hpp"
 #include <cerrno>
 #include <cstdio>
 
 using AKSeries::CanInterface;
 using AKSeries::Expected;
 
-CanInterface::CanInterface(const char *canif) {
+CanInterface::CanInterface(const char *canif, Logger const *log) {
   auto canID = CanInterface::initCan(canif);
   if (!canID.successful) {
-    std::fprintf(stderr, "Failed to create CanInterface object for %s\n", canif);
     return;
   }
   canIF = canif;
@@ -19,7 +19,7 @@ CanInterface::CanInterface(const char *canif) {
 Expected<int, CanIOError> CanInterface::initCan(const char *str) {
   int s = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
   if (s < 0) {
-    std::fprintf(stderr, "Failed to initialize can socket file descriptor");
+    Logger::log(LoggingLevel::Critical, "Failed to initialize can socket file descriptor");
     return Expected<int, CanIOError>(CanIOError::SOCKET_ERROR);
   }
   struct ifreq ifr;
@@ -34,7 +34,7 @@ Expected<int, CanIOError> CanInterface::initCan(const char *str) {
   // to safely cast to the other
 
   if (::bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    std::fprintf(stderr, "Failed to bind to can address socket");
+    Logger::log(LoggingLevel::Critical, "Failed to bind to can address socket");
     return Expected<int, CanIOError>(CanIOError::BIND_ERROR);
   }
   return Expected<int, CanIOError>(s);
