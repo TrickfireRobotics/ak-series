@@ -26,6 +26,7 @@ constexpr const char *enumToStr(LoggingLevel l) {
     return "[Unknown]: ";
   };
 }
+inline static uint8_t log_level = {LOGGING_LEVEL};
 }; // namespace
 
 // Quiet dumps error and above, Verbose dumps warning and above
@@ -65,7 +66,7 @@ public:
       activeLogger = new Logger{};
     }
 
-    if (static_cast<uint8_t>(level) >= LOGGING_LEVEL) {
+    if (static_cast<uint8_t>(level) >= log_level) {
       return;
     }
 
@@ -73,5 +74,6 @@ public:
     std::fprintf(Logger::m_file, error, std::forward<Args>(args)...);
     std::fprintf(Logger::m_file, "\n");
   };
+  static const void setLoggingLevel(LoggingLevel l) { log_level = static_cast<uint8_t>(l); }
 };
 #endif
